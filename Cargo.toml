@@ -4,10 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-rapier3d = "0.22"
-wgpu = "22"
+rapier3d = "0.32"
+wgpu = "29"
 winit = "0.30"
-nalgebra = "0.33"
+nalgebra = "0.34"
 bytemuck = { version = "1", features = ["derive"] }
-pollster = "0.3"
-png = "0.17"
+pollster = "0.4"

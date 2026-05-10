@@ -111,8 +111,7 @@ impl Gpu {
             })
             .await
             .unwrap();
-        let (device, queue) =
-            adapter.request_device(&Default::default(), None).await.unwrap();
+        let (device, queue) = adapter.request_device(&Default::default()).await.unwrap();
 
         let caps = surface.get_capabilities(&adapter);
         let fmt = caps.formats[0];
@@ -163,12 +162,12 @@ impl Gpu {
             label: None,
             layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: None,
-                bind_group_layouts: &[&bgl],
-                push_constant_ranges: &[],
+                bind_group_layouts: &[Some(&bgl)],
+                immediate_size: 0,
             })),
             vertex: wgpu::VertexState {
                 module: &shader,
-                entry_point: "vs",
+                entry_point: Some("vs"),
                 compilation_options: Default::default(),
                 buffers: &[
                     wgpu::VertexBufferLayout {
@@ -194,7 +193,7 @@ impl Gpu {
             },
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
-                entry_point: "fs",
+                entry_point: Some("fs"),
                 compilation_options: Default::default(),
                 targets: &[Some(wgpu::ColorTargetState {
                     format: fmt,
@@ -205,13 +204,13 @@ impl Gpu {
             primitive: wgpu::PrimitiveState { cull_mode: Some(wgpu::Face::Back), ..Default::default() },
             depth_stencil: Some(wgpu::DepthStencilState {
                 format: wgpu::TextureFormat::Depth32Float,
-                depth_write_enabled: true,
-                depth_compare: wgpu::CompareFunction::Less,
+                depth_write_enabled: Some(true),
+                depth_compare: Some(wgpu::CompareFunction::Less),
                 stencil: Default::default(),
                 bias: Default::default(),
             }),
             multisample: Default::default(),
-            multiview: None,
+            multiview_mask: None,
             cache: None,
         });
 
@@ -239,8 +238,8 @@ impl Gpu {
             * Matrix4::new_nonuniform_scaling(&Vector3::new(10.0, 0.2, 10.0));
 
         let instances = [
-            Instance { model: mat4_cols(&floor),            color: [0.4, 0.4, 0.4, 1.0] },
-            Instance { model: physics.box_matrix(),         color: [0.9, 0.5, 0.2, 1.0] },
+            Instance { model: mat4_cols(&floor),        color: [0.4, 0.4, 0.4, 1.0] },
+            Instance { model: physics.box_matrix(),     color: [0.9, 0.5, 0.2, 1.0] },
         ];
         let inst_buf = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: None,
@@ -248,7 +247,10 @@ impl Gpu {
             usage: wgpu::BufferUsages::VERTEX,
         });
 
-        let frame = self.surface.get_current_texture().unwrap();
+        let frame = match self.surface.get_current_texture() {
+            wgpu::CurrentSurfaceTexture::Success(t) | wgpu::CurrentSurfaceTexture::Suboptimal(t) => t,
+            _ => return,
+        };
         let view = frame.texture.create_view(&Default::default());
         let mut enc = self.device.create_command_encoder(&Default::default());
         {
@@ -256,6 +258,7 @@ impl Gpu {
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &view,
                     resolve_target: None,
+                    depth_slice: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color { r: 0.08, g: 0.08, b: 0.1, a: 1.0 }),
                         store: wgpu::StoreOp::Store,
